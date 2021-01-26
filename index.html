@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="google" value="notranslate">
+  <title> - </title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+  <link href="style.css" rel="stylesheet">
+</head>
+
+
+<!-- ===========================================================================
+
+============================================================================ -->
+
+
+<body>
+  <header class="mb-5">
+    <h1 class="fancy-h1 my-5">Promisified XHR Helper</h1>
+  </header>
+
+
+  <!-- =========================================================================
+
+  ========================================================================== -->
+
+
+  <main>
+    <div class="container-fluid px-5">
+      <article class="article">
+        <h2 class="fancy-h2">Overview:</h2>
+
+
+        <p class="text-primary">Note: GitHub blocks PHP. I put this demo page up all the same just so the overview could be read.</p>
+
+
+        <p>The <code>request()</code> function returns a <code>Promise</code>. This allows
+        us to handle the response, or error, once the <code>Promise</code> has settled.
+        In other words, we don't have to use callbacks.</p>
+
+
+        <p>Normally, if one is using <code>XMLHttpRequest</code> it might be
+        because they want to be ES5-compatible without resorting to <code>Promise</code>
+        polyfills needed in conjunction with some AJAX libraries. To that extent, this
+        helper function doesn't entirely make sense. If you're going to use Promises, why
+        not just use Axios? That said, if you just want to drop in a quick helper function,
+        rather than use a third-party library, this'll do the trick.</p>
+
+
+        <p>See test.js for usage examples. All results are logged in the browser console.
+        The <code>request()</code> function works with <code>GET</code>, <code>POST</code>,
+        <code>PUT</code>, <code>PATCH</code>, and <code>DELETE</code> requests.
+        It can send JSON, <code>FormData</code> and query strings.
+        If sending JSON, do not <code>JSON.stringify()</code> the <code>config.data</code>.
+        <code>request()</code> will do that for you.</p>
+
+
+        <pre><code>
+  function request(config){
+    return new Promise((resolve, reject) => {
+      /* ========================
+         Return early if...
+      ======================== */
+
+
+      if (config === null || typeof config === 'undefined'){
+        return reject({ message: "A config object must be passed to request()." });
+      }
+
+      else if (!config.hasOwnProperty('type')){
+        return reject({ message: "A config object must be given a 'type' property." });
+      }
+
+      else if (!config.hasOwnProperty('url')){
+        return reject({ message: "A config object must be given a 'url' property." });
+      }
+
+      else if (
+        (config.type.toUpperCase() === 'POST' || config.type.toUpperCase() === 'PUT' || config.type.toUpperCase() === 'PATCH') &&
+        (!config.hasOwnProperty('data')       || config.data === null                || config.data === undefined || config.data === '')   ){
+        return reject({ message: "A 'data' property and value (!null, !undefined, nor '') must be included with POST, PUT, and PATCH requests." });
+      }
+
+      else if (
+        (config.type.toUpperCase() === 'DELETE' && config.hasOwnProperty('data')) &&
+        (config.data === null || config.data === undefined || config.data === '')){
+        return reject({ message: "When including a 'data' property with a DELETE request, the value must not be null, undefined, or ''." });
+      }
+
+
+      /* ========================
+          Set async and type
+      ======================== */
+
+
+      if (!config.hasOwnProperty('async')){ config.async = true; }
+      config.type = config.type.toUpperCase();
+
+
+      /* ========================
+         xhr & setRequestHeader
+      ======================== */
+
+
+      var xhr = new XMLHttpRequest();
+      xhr.open(config.type, config.url, config.async);
+
+
+      if (config.hasOwnProperty('data')){
+        if (typeof config.data === 'object' && !(config.data instanceof FormData)){
+          xhr.setRequestHeader("Content-type", "application/json");
+          config.data = JSON.stringify(config.data);
+        } else if (typeof config.data === 'string'){
+          xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+        }
+        //else if (config.data instanceof FormData){ } //Automatically set by FormData to "multipart/form-data"
+      }
+
+
+      /* ========================
+               timeout
+      ======================== */
+
+
+      if (config.hasOwnProperty('timeout')){
+        //Timeouts cannot be set for synchronous requests made from a document.
+        if (config.async === true){ xhr.timeout = config.timeout; }
+      }
+
+
+      /* ========================
+               onload
+      ======================== */
+
+
+      xhr.onload = function(){
+        if (this.status !== 0){ return resolve(xhr); }
+      };
+
+
+      /* ========================
+              onerror
+      ======================== */
+
+
+      xhr.onerror = function(e){
+        return reject({ message: "Their was an error with the request." });
+      };
+
+
+      /* ========================
+              ontimeout
+      ======================== */
+
+
+      xhr.ontimeout = function(){
+        return reject({ message: "The request timed out." });
+      };
+
+
+      /* ========================
+                send
+      ======================== */
+
+
+      if (config.type === 'GET'){
+        xhr.send();
+      } else if (config.type === 'POST' || config.type === 'PUT' || config.type === 'PATCH'){
+        xhr.send(config.data);
+      } else if (config.type ==="DELETE"){
+        if (config.hasOwnProperty('data')){
+          xhr.send(config.data);
+        } else {
+          xhr.send();
+        }
+      }
+
+    }); //End of: return new Promise((resolve, reject) => { ... });
+  }
+        </code></pre>
+      </article>
+    </div><!-- <div class="container"> -->
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.bundle.min.js" integrity="sha384-ygbV9kiqUc6oa4msXn9868pTtWMgiQaeYH7/t7LECLbyPA2x65Kgf80OJFdroafW" crossorigin="anonymous"></script>
+  <script src="request.js"></script>
+  <script src="test.js"></script>
+</body>
+</html>
